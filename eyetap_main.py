@@ -65,10 +65,11 @@ def main() -> None:
                     help="Webcam index (default 0 = built-in laptop camera)")
     ap.add_argument("--calibrate", action="store_true",
                     help="Run 9-point calibration before starting")
-    ap.add_argument("--smooth", type=float, default=0.12,
-                    help="Gaze smoothing factor 0–1 (lower = smoother, default 0.12)")
+    ap.add_argument("--smooth", type=float, default=0.05,
+                    help="Gaze smoothing factor 0-1 (lower = smoother, default 0.05)")
 
-    # Debug
+    ap.add_argument("--deadzone", type=float, default=0.004,
+                    help="Min iris shift (0-1 normalised) before cursor moves (default 0.004)")
     ap.add_argument("--verbose", action="store_true",
                     help="Show everything the recogniser heard")
     ap.add_argument("--text", action="store_true",
@@ -86,7 +87,8 @@ def main() -> None:
         try:
             from gaze_cursor import GazeCursor
             gaze = GazeCursor(cam_index=args.cam, smooth=args.smooth,
-                              move_mouse=not args.dry_run)
+                              move_mouse=not args.dry_run,
+                              deadzone=args.deadzone)
         except ImportError as e:
             print(f"[EyeTap] WARNING: could not import gaze module: {e}")
             print("[EyeTap] Falling back to --no-gaze mode.")
@@ -141,23 +143,25 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 5. Run
     # ------------------------------------------------------------------
-    banner = (
-        "\n"
-        "=" * 64 + "\n"
-        "         EyeTap Voice + Gaze Control" + "\n"
-        "=" * 64 + "\n"
-        "  Look where you want to act, then say a command:\n"
-        '    "click"           - click where you look\n'
-        '    "open link"       - Ctrl+click the link you see (new tab)\n'
-        '    "scroll up/down"  - scroll where you are looking\n'
-        '    "open <app>"      - launch any app\n'
-        '    "go to <site>"    - navigate browser to site\n'
-        '    "scroll up/down/left/right [one..ten]"\n'
-        '    "stop listening" / "start listening" - mute/unmute\n'
-        '    "quit voice control" - exit\n'
-        + "=" * 64 + "\n"
-    )
-    print(banner)
+    LINE = "=" * 64
+    banner_lines = [
+        "",
+        LINE,
+        "     EyeTap Voice + Gaze Control",
+        LINE,
+        "  Look where you want to act, then say a command:",
+        '    "click"          -> left-click where you look',
+        '    "open link"      -> Ctrl+click the link you see (new tab)',
+        '    "scroll up/down" -> scroll where you are looking',
+        '    "open <app>"     -> launch any app',
+        '    "go to <site>"   -> navigate browser to site',
+        '    "scroll up/down/left/right [one..ten]"',
+        '    "stop listening" / "start listening"  -> mute/unmute',
+        '    "quit voice control" -> exit',
+        LINE,
+        "",
+    ]
+    print("\n".join(banner_lines))
 
     if args.text:
         print("Text mode. Type commands, Ctrl+C to exit.")

@@ -129,16 +129,20 @@ class GazeCursor:
         OpenCV camera index (0 = built-in webcam).
     smooth : float
         Exponential moving-average factor (0 < α ≤ 1).
-        Lower = smoother but laggier. 0.12 is a good starting point.
+        Lower = smoother but laggier. 0.05 is a good starting point.
     move_mouse : bool
         If True, physically moves the OS cursor to the gaze point.
+    deadzone : float
+        Minimum normalised iris movement (0-1) before cursor updates.
+        Kills micro-jitter. Default 0.004 (~7 px on 1920-wide screen).
     """
 
-    def __init__(self, cam_index: int = 0, smooth: float = 0.12,
-                 move_mouse: bool = True):
+    def __init__(self, cam_index: int = 0, smooth: float = 0.05,
+                 move_mouse: bool = True, deadzone: float = 0.004):
         self.cam_index  = cam_index
         self.smooth     = smooth
         self.move_mouse = move_mouse
+        self.deadzone   = deadzone
 
         self._lock      = threading.Lock()
         self._gaze      = (0.5, 0.5)          # normalised, starts at centre
@@ -295,6 +299,7 @@ class GazeCursor:
 
         α = self.smooth
         ema_x, ema_y = 0.5, 0.5   # start at screen centre
+        prev_sx, prev_sy = -1, -1  # last position actually sent to mouse
 
         pg = None
         if self.move_mouse:
@@ -326,10 +331,14 @@ class GazeCursor:
 
                 if pg:
                     sx, sy = self._to_screen(ema_x, ema_y)
-                    try:
-                        pg.moveTo(sx, sy, duration=0)
-                    except Exception:
-                        pass
+                    # Only move mouse if gaze shifted beyond deadzone
+                    dz_px = self.deadzone * self._sw
+                    if abs(sx - prev_sx) > dz_px or abs(sy - prev_sy) > dz_px:
+                        try:
+                            pg.moveTo(sx, sy, duration=0)
+                            prev_sx, prev_sy = sx, sy
+                        except Exception:
+                            pass
 
         cap.release()
 
