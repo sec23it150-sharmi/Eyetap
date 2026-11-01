@@ -1,0 +1,6 @@
+vosk
+sounddevice
+pyautogui
+mediapipe
+opencv-python
+numpy
